@@ -201,20 +201,20 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const gridRect = gridRef.current?.getBoundingClientRect();
 
   return (
-    <div className="flex h-dvh flex-col bg-[#1c1c1c] text-zinc-300 select-none">
+    <div className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2.5">
         <button
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 ease hover:text-zinc-100 hover:bg-white/5"
+          className="flex h-11 w-11 items-center justify-center rounded-none text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
         >
           {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
         </button>
         <button
           onClick={restart}
           aria-label="Restart"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-500 transition-colors duration-200 ease hover:text-zinc-100 hover:bg-white/5"
+          className="flex h-11 w-11 items-center justify-center rounded-none text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
         >
           <ArrowCounterClockwise weight="bold" />
         </button>
@@ -233,11 +233,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               }}
               aria-label={`Select flower ${f}`}
               aria-pressed={selected === f}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-200 ease ${
-                selected === f
-                  ? "bg-white/10 ring-1 ring-white/20"
-                  : "hover:bg-white/5"
-              }`}
+              className={`flex h-11 w-11 items-center justify-center rounded-none transition-colors duration-200 ease ${selected === f
+                ? "bg-white/20 ring-1 ring-white/30 text-white"
+                : "text-zinc-400 hover:bg-white/10 hover:text-white"
+                }`}
             >
               <BloomFlower
                 ref={(h) => {
@@ -255,7 +254,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
 
         {/* Speed slider */}
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+          <span className="text-xs font-medium uppercase tracking-wider text-white/50">
             Speed
           </span>
           <input
@@ -268,7 +267,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             className="speed-slider w-36"
             aria-label="Song speed"
           />
-          <span className="w-8 text-xs tabular-nums text-zinc-500">
+          <span className="w-8 text-xs tabular-nums text-white/50">
             {speed.toFixed(1)}
           </span>
         </div>
@@ -277,7 +276,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
 
         <button
           onClick={() => setNotes(new Map())}
-          className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 transition-colors duration-200 ease hover:text-zinc-200 hover:bg-white/5"
+          className="flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
         >
           Clear
         </button>
@@ -301,46 +300,46 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             } as React.CSSProperties
           }
         >
-        {/* hover ghost */}
-        {hoverCell && !dragNote && !notes.has(keyOf(hoverCell.col, hoverCell.row)) && (
-          <div
-            className="pointer-events-none absolute opacity-30"
-            style={{
-              left: `${(hoverCell.col / COLS) * 100}%`,
-              top: `${(hoverCell.row / ROWS) * 100}%`,
-              width: `${100 / COLS}%`,
-              height: `${100 / ROWS}%`,
-            }}
-          >
-            <div className="absolute inset-0 scale-[3]">
-              <BloomFlower plan={plans[selected]} className="h-full w-full p-[8%]" />
-            </div>
-          </div>
-        )}
-
-        {/* drop target ghost while dragging */}
-        {dragNote && drag?.moved && hoverCell && (
-          <div
-            className="pointer-events-none absolute rounded-md bg-white/5 ring-1 ring-white/15"
-            style={{
-              left: `${(hoverCell.col / COLS) * 100}%`,
-              top: `${(hoverCell.row / ROWS) * 100}%`,
-              width: `${100 / COLS}%`,
-              height: `${100 / ROWS}%`,
-            }}
-          />
-        )}
-
-        {/* placed flowers */}
-        {[...notes.entries()].map(([key, note]) => {
-          const isDragging = drag?.key === key && drag.moved;
-          return (
+          {/* hover ghost */}
+          {hoverCell && !dragNote && !notes.has(keyOf(hoverCell.col, hoverCell.row)) && (
             <div
-              key={key}
-              className="pointer-events-none absolute"
-              style={
-                isDragging && gridRect
-                  ? {
+              className="pointer-events-none absolute opacity-30"
+              style={{
+                left: `${(hoverCell.col / COLS) * 100}%`,
+                top: `${(hoverCell.row / ROWS) * 100}%`,
+                width: `${100 / COLS}%`,
+                height: `${100 / ROWS}%`,
+              }}
+            >
+              <div className="absolute inset-0 scale-[3]">
+                <BloomFlower plan={plans[selected]} className="h-full w-full p-[8%]" />
+              </div>
+            </div>
+          )}
+
+          {/* drop target ghost while dragging */}
+          {dragNote && drag?.moved && hoverCell && (
+            <div
+              className="pointer-events-none absolute rounded-none bg-white/5 ring-1 ring-white/15"
+              style={{
+                left: `${(hoverCell.col / COLS) * 100}%`,
+                top: `${(hoverCell.row / ROWS) * 100}%`,
+                width: `${100 / COLS}%`,
+                height: `${100 / ROWS}%`,
+              }}
+            />
+          )}
+
+          {/* placed flowers */}
+          {[...notes.entries()].map(([key, note]) => {
+            const isDragging = drag?.key === key && drag.moved;
+            return (
+              <div
+                key={key}
+                className="pointer-events-none absolute"
+                style={
+                  isDragging && gridRect
+                    ? {
                       left: drag.x - gridRect.left,
                       top: drag.y - gridRect.top,
                       width: `${100 / COLS}%`,
@@ -349,41 +348,41 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                       zIndex: 10,
                       filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))",
                     }
-                  : {
+                    : {
                       left: `${(note.col / COLS) * 100}%`,
                       top: `${(note.row / ROWS) * 100}%`,
                       width: `${100 / COLS}%`,
                       height: `${100 / ROWS}%`,
                     }
-              }
-            >
-              <div className="absolute inset-0 scale-[3]">
-                <BloomFlower
-                  ref={(h) => {
-                    if (h) bloomRefs.current.set(key, h);
-                    else bloomRefs.current.delete(key);
-                  }}
-                  plan={plans[note.flower]}
-                  className="h-full w-full p-[6%]"
-                />
+                }
+              >
+                <div className="absolute inset-0 scale-[3]">
+                  <BloomFlower
+                    ref={(h) => {
+                      if (h) bloomRefs.current.set(key, h);
+                      else bloomRefs.current.delete(key);
+                    }}
+                    plan={plans[note.flower]}
+                    className="h-full w-full p-[6%]"
+                  />
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {/* playhead */}
-        <div
-          ref={playheadRef}
-          className="pointer-events-none absolute inset-y-0 left-0 z-20 will-change-transform"
-          style={{
-            width: `${100 / COLS}%`,
-            visibility: playing || positionRef.current > 0 ? "visible" : "hidden",
-          }}
-        >
-          <div className="absolute inset-y-0 left-0 w-px bg-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+          {/* playhead */}
+          <div
+            ref={playheadRef}
+            className="pointer-events-none absolute inset-y-0 left-0 z-20 will-change-transform"
+            style={{
+              width: `${100 / COLS}%`,
+              visibility: playing || positionRef.current > 0 ? "visible" : "hidden",
+            }}
+          >
+            <div className="absolute inset-y-0 left-0 w-px bg-white/40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+          </div>
         </div>
-      </div>
       </div>
       <div className="portrait:flex hidden fixed inset-0 z-50 bg-[#1c1c1c] items-center justify-center p-8 text-center text-zinc-300">
         Please turn your phone to landscape mode for the best experience.
