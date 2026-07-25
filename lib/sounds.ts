@@ -81,9 +81,12 @@ function renderTone(
   destination: AudioNode,
   layer: ToneLayer,
   startTime: number,
-  ratio: number
+  ratio: number,
+  stretch: number
 ) {
-  const duration = layer.attack + layer.decay + SOURCE_STOP_PADDING;
+  const attack = layer.attack * stretch;
+  const decay = layer.decay * stretch;
+  const duration = attack + decay + SOURCE_STOP_PADDING;
   const osc = context.createOscillator();
   osc.type = layer.waveform;
   osc.frequency.setValueAtTime(layer.frequency * ratio, startTime);
@@ -91,13 +94,13 @@ function renderTone(
   if (layer.glideTo !== undefined) {
     osc.frequency.exponentialRampToValueAtTime(
       layer.glideTo * ratio,
-      startTime + (layer.glideTime ?? layer.attack + layer.decay)
+      startTime + (layer.glideTime ? layer.glideTime * stretch : attack + decay)
     );
   }
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(layer.peak, startTime + layer.attack);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + layer.attack + layer.decay);
+  gain.gain.exponentialRampToValueAtTime(layer.peak, startTime + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + attack + decay);
   osc.connect(gain).connect(destination);
   osc.start(startTime);
   osc.stop(startTime + duration);
@@ -131,7 +134,8 @@ function attachShimmer(
  * Plays a flower's sound transposed by `semitones` relative to the recipe's
  * default pitch. Negative values go lower, positive higher.
  */
-export function playFlowerNote(flower: FlowerKind, semitones: number) {
+export function playFlowerNote(flower: FlowerKind, semitones: number, speed: number = 7.5) {
+  const stretch = 7.5 / speed;
   const context = getAudioContext();
   if (!context) return;
   if (context.state !== "running") {
@@ -152,9 +156,10 @@ export function playFlowerNote(flower: FlowerKind, semitones: number) {
     : [];
   let end = 0;
   for (const layer of recipe.layers) {
-    const startTime = now + (layer.offset ?? 0);
-    renderTone(context, master, layer, startTime, ratio);
-    end = Math.max(end, (layer.offset ?? 0) + layer.attack + layer.decay + SOURCE_STOP_PADDING);
+    const offset = (layer.offset ?? 0) * stretch;
+    const startTime = now + offset;
+    renderTone(context, master, layer, startTime, ratio, stretch);
+    end = Math.max(end, offset + (layer.attack + layer.decay) * stretch + SOURCE_STOP_PADDING);
   }
   const shimmerTail = recipe.shimmer
     ? recipe.shimmer.delay * (1 + Math.ceil(Math.log(0.001) / Math.log(recipe.shimmer.feedback)))

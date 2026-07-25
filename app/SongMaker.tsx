@@ -11,6 +11,8 @@ import { buildMorphPlan, type MorphPlan } from "../lib/flower-morph";
 import { playFlowerNote, type FlowerKind } from "../lib/sounds";
 import BloomFlower, { type BloomFlowerHandle } from "./BloomFlower";
 
+import { Play, Pause, ArrowCounterClockwise } from "@phosphor-icons/react";
+
 const COLS = 32;
 const ROWS = 14;
 
@@ -74,7 +76,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const triggerColumn = useCallback((col: number) => {
     for (const [key, note] of notesRef.current) {
       if (note.col !== col) continue;
-      playFlowerNote(note.flower, ROW_SEMITONES[note.row]);
+      playFlowerNote(note.flower, ROW_SEMITONES[note.row], speedRef.current);
       bloomRefs.current.get(key)?.bloom();
     }
   }, []);
@@ -135,7 +137,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         next.set(key, note);
         return next;
       });
-      playFlowerNote(selected, ROW_SEMITONES[cell.row]);
+      playFlowerNote(selected, ROW_SEMITONES[cell.row], speed);
       requestAnimationFrame(() => bloomRefs.current.get(key)?.bloom());
     }
   };
@@ -170,7 +172,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           next.delete(drag.key);
           next.set(targetKey, { ...note, col: cell.col, row: cell.row });
           if (targetKey !== drag.key) {
-            playFlowerNote(note.flower, ROW_SEMITONES[cell.row]);
+            playFlowerNote(note.flower, ROW_SEMITONES[cell.row], speed);
           }
         }
       }
@@ -207,26 +209,14 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           aria-label={playing ? "Pause" : "Play"}
           className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 ease hover:text-zinc-100 hover:bg-white/5"
         >
-          {playing ? (
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-              <rect x="1" y="1" width="4" height="12" rx="1" />
-              <rect x="9" y="1" width="4" height="12" rx="1" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-              <path d="M2.5 1.5 L12.5 7 L2.5 12.5 Z" />
-            </svg>
-          )}
+          {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
         </button>
         <button
           onClick={restart}
           aria-label="Restart"
           className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-500 transition-colors duration-200 ease hover:text-zinc-100 hover:bg-white/5"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-            <rect x="1" y="1" width="2.5" height="12" rx="1" />
-            <path d="M13 1.5 L5 7 L13 12.5 Z" />
-          </svg>
+          <ArrowCounterClockwise weight="bold" />
         </button>
 
         <div className="mx-2 h-6 w-px bg-white/10" />
@@ -239,7 +229,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               onClick={() => {
                 setSelected(f);
                 paletteRefs.current.get(f)?.bloom();
-                playFlowerNote(f, 0);
+                playFlowerNote(f, 0, speed);
               }}
               aria-label={`Select flower ${f}`}
               aria-pressed={selected === f}
@@ -294,20 +284,23 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       </div>
 
       {/* Grid */}
-      <div
-        ref={gridRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={() => !drag && setHoverCell(null)}
-        className="song-grid relative flex-1 cursor-pointer touch-none overflow-hidden border-t border-white/10"
-        style={
-          {
-            "--cols": COLS,
-            "--rows": ROWS,
-          } as React.CSSProperties
-        }
-      >
+      <div className="relative flex-1 overflow-x-auto overflow-y-hidden border-t border-white/10 touch-pan-x">
+        <div
+          ref={gridRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={() => !drag && setHoverCell(null)}
+          className="song-grid relative h-full cursor-pointer touch-none"
+          style={
+            {
+              "--cols": COLS,
+              "--rows": ROWS,
+              aspectRatio: `${COLS} / ${ROWS}`,
+              minWidth: "max-content",
+            } as React.CSSProperties
+          }
+        >
         {/* hover ghost */}
         {hoverCell && !dragNote && !notes.has(keyOf(hoverCell.col, hoverCell.row)) && (
           <div
@@ -319,7 +312,9 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               height: `${100 / ROWS}%`,
             }}
           >
-            <BloomFlower plan={plans[selected]} className="h-full w-full p-[8%]" />
+            <div className="absolute inset-0 scale-[3]">
+              <BloomFlower plan={plans[selected]} className="h-full w-full p-[8%]" />
+            </div>
           </div>
         )}
 
@@ -362,14 +357,16 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                     }
               }
             >
-              <BloomFlower
-                ref={(h) => {
-                  if (h) bloomRefs.current.set(key, h);
-                  else bloomRefs.current.delete(key);
-                }}
-                plan={plans[note.flower]}
-                className="h-full w-full p-[6%]"
-              />
+              <div className="absolute inset-0 scale-[3]">
+                <BloomFlower
+                  ref={(h) => {
+                    if (h) bloomRefs.current.set(key, h);
+                    else bloomRefs.current.delete(key);
+                  }}
+                  plan={plans[note.flower]}
+                  className="h-full w-full p-[6%]"
+                />
+              </div>
             </div>
           );
         })}
@@ -386,6 +383,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           <div className="absolute inset-y-0 left-0 w-px bg-white/40" />
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
         </div>
+      </div>
+      </div>
+      <div className="portrait:flex hidden fixed inset-0 z-50 bg-[#1c1c1c] items-center justify-center p-8 text-center text-zinc-300">
+        Please turn your phone to landscape mode for the best experience.
       </div>
     </div>
   );

@@ -38,12 +38,16 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
     const pathRefs = useRef<(SVGPathElement | null)[]>([]);
     const gradRefs = useRef<(SVGRadialGradientElement | null)[]>([]);
     const stopRefs = useRef<(SVGStopElement | null)[][]>([]);
+    const svgRef = useRef<SVGSVGElement>(null);
     const rafRef = useRef(0);
     const lastT = useRef(0);
 
     const applyT = (t: number) => {
       if (t === lastT.current) return;
       lastT.current = t;
+      if (svgRef.current) {
+        svgRef.current.style.transform = `scale(${1 + 0.1 * t})`;
+      }
       for (let i = 0; i < plan.paths.length; i++) {
         const p = plan.paths[i];
         const el = pathRefs.current[i];
@@ -104,6 +108,7 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
             applyRef.current(0);
             return;
           }
+          
           applyRef.current(t);
           rafRef.current = requestAnimationFrame(frame);
         };
@@ -115,8 +120,10 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
 
     return (
       <svg
+        ref={svgRef}
         viewBox={plan.viewBox}
         className={className}
+        style={{ transformOrigin: "center" }}
         xmlns="http://www.w3.org/2000/svg"
         role="img"
         aria-label="Flower"
