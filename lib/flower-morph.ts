@@ -7,10 +7,44 @@ interface Subpath {
   closed: boolean;
 }
 
+export interface GradStop {
+  offset: number;
+  color: [number, number, number];
+  opacity: number;
+}
+
+export interface RadialGrad {
+  cx: number;
+  cy: number;
+  r: number;
+  tx: number;
+  ty: number;
+  rot: number;
+  sx: number;
+  sy: number;
+  stops: GradStop[];
+}
+
+export type Fill =
+  | { type: "solid"; color: [number, number, number] }
+  | { type: "gradient"; grad: RadialGrad }
+  | { type: "raw"; value: string };
+
+export type FillState =
+  | { kind: "value"; fill: string }
+  | {
+      kind: "gradient";
+      cx: number;
+      cy: number;
+      r: number;
+      transform: string;
+      stops: { offset: number; color: string; opacity: number }[];
+    };
+
 interface ParsedPath {
   subpaths: Subpath[];
-  fill: string;
-  fillOpacity: string;
+  fill: Fill;
+  fillOpacity: number;
 }
 
 export interface MorphSub {
@@ -21,8 +55,11 @@ export interface MorphSub {
 
 export interface MorphPath {
   subs: MorphSub[];
-  fill: string;
-  fillOpacity: string;
+  fillFrom: Fill;
+  fillTo: Fill;
+  opacityFrom: number;
+  opacityTo: number;
+  fillAnimates: boolean;
 }
 
 export interface MorphPlan {
@@ -210,7 +247,117 @@ function flatten(sub: Subpath): number[] {
   return out;
 }
 
+const FNUM = "(-?(?:\\d*\\.\\d+|\\d+\\.?)(?:e[+-]?\\d+)?)";
+
+function parseColor(s: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s.trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function parseGradientTransform(s: string) {
+  const t = { tx: 0, ty: 0, rot: 0, sx: 1, sy: 1 };
+  const tr = new RegExp(`translate\\(\\s*${FNUM}(?:[\\s,]+${FNUM})?`, "i").exec(s);
+  if (tr) {
+    t.tx = parseFloat(tr[1]);
+    t.ty = tr[2] ? parseFloat(tr[2]) : 0;
+  }
+  const ro = new RegExp(`rotate\\(\\s*${FNUM}`, "i").exec(s);
+  if (ro) t.rot = parseFloat(ro[1]);
+  const sc = new RegExp(`scale\\(\\s*${FNUM}(?:[\\s,]+${FNUM})?`, "i").exec(s);
+  if (sc) {
+    t.sx = parseFloat(sc[1]);
+    t.sy = sc[2] ? parseFloat(sc[2]) : t.sx;
+  }
+  return t;
+}
+
+function parseGradients(svg: string): Map<string, RadialGrad> {
+  const map = new Map<string, RadialGrad>();
+  const re = /<radialGradient\b([^>]*)>([\s\S]*?)<\/radialGradient>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(svg))) {
+    const id = /\bid="([^"]*)"/.exec(m[1])?.[1];
+    if (!id) continue;
+    const tf = /gradientTransform="([^"]*)"/.exec(m[1])?.[1] ?? "";
+    const stops: GradStop[] = [];
+    const stopRe = /<stop\b[^>]*\/?>/g;
+    let sm: RegExpExecArray | null;
+    while ((sm = stopRe.exec(m[2]))) {
+      const tag = sm[0];
+      stops.push({
+        offset: parseFloat(/\boffset="([^"]*)"/.exec(tag)?.[1] ?? "0") || 0,
+        color: parseColor(/stop-color="([^"]*)"/.exec(tag)?.[1] ?? "#000") ?? [0, 0, 0],
+        opacity: parseFloat(/stop-opacity="([^"]*)"/.exec(tag)?.[1] ?? "1"),
+      });
+    }
+    map.set(id, {
+      cx: parseFloat(/\bcx="([^"]*)"/.exec(m[1])?.[1] ?? "0"),
+      cy: parseFloat(/\bcy="([^"]*)"/.exec(m[1])?.[1] ?? "0"),
+      r: parseFloat(/\br="([^"]*)"/.exec(m[1])?.[1] ?? "1"),
+      ...parseGradientTransform(tf),
+      stops,
+    });
+  }
+  return map;
+}
+
+function resolveFill(attr: string, grads: Map<string, RadialGrad>): Fill {
+  const url = /^url\(#([^)]+)\)$/.exec(attr.trim());
+  if (url) {
+    const g = grads.get(url[1]);
+    if (g) return { type: "gradient", grad: g };
+    return { type: "raw", value: attr };
+  }
+  const c = parseColor(attr);
+  if (c) return { type: "solid", color: c };
+  return { type: "raw", value: attr };
+}
+
+function padStops(g: RadialGrad, n: number): RadialGrad {
+  const stops = g.stops.slice();
+  const last = stops[stops.length - 1] ?? { offset: 1, color: [0, 0, 0] as [number, number, number], opacity: 1 };
+  while (stops.length < n) stops.push({ ...last, color: [...last.color] as [number, number, number] });
+  return { ...g, stops };
+}
+
+function solidToGrad(color: [number, number, number], like: RadialGrad): RadialGrad {
+  return {
+    ...like,
+    stops: like.stops.map((s) => ({
+      offset: s.offset,
+      color: [...color] as [number, number, number],
+      opacity: 1,
+    })),
+  };
+}
+
+function pairFills(a: Fill, b: Fill): [Fill, Fill] {
+  if (a.type === "raw" || b.type === "raw") return [a, a];
+  if (a.type === "gradient" && b.type === "solid") {
+    return [a, { type: "gradient", grad: solidToGrad(b.color, a.grad) }];
+  }
+  if (a.type === "solid" && b.type === "gradient") {
+    return [{ type: "gradient", grad: solidToGrad(a.color, b.grad) }, b];
+  }
+  if (a.type === "gradient" && b.type === "gradient") {
+    const n = Math.max(a.grad.stops.length, b.grad.stops.length);
+    return [
+      { type: "gradient", grad: padStops(a.grad, n) },
+      { type: "gradient", grad: padStops(b.grad, n) },
+    ];
+  }
+  return [a, b];
+}
+
 function extractPaths(svg: string): ParsedPath[] {
+  const grads = parseGradients(svg);
   const paths: ParsedPath[] = [];
   const tagRe = /<path\b[^>]*>/g;
   let match: RegExpExecArray | null;
@@ -220,8 +367,8 @@ function extractPaths(svg: string): ParsedPath[] {
     if (!d) continue;
     paths.push({
       subpaths: parsePathD(d),
-      fill: /\bfill="([^"]*)"/.exec(tag)?.[1] ?? "currentColor",
-      fillOpacity: /\bfill-opacity="([^"]*)"/.exec(tag)?.[1] ?? "1",
+      fill: resolveFill(/\bfill="([^"]*)"/.exec(tag)?.[1] ?? "currentColor", grads),
+      fillOpacity: parseFloat(/\bfill-opacity="([^"]*)"/.exec(tag)?.[1] ?? "1"),
     });
   }
   return paths;
@@ -278,14 +425,68 @@ export function buildMorphPlan(
     for (let p = 0; p < fold; p++) {
       const pa = a[mapRing(r, rings, ringsA) * fold + p];
       const pb = b[mapRing(r, rings, ringsB) * fold + p];
+      const [fillFrom, fillTo] = pairFills(pa.fill, pb.fill);
       paths.push({
         subs: pairSubpaths(pa.subpaths, pb.subpaths),
-        fill: pa.fill,
-        fillOpacity: pa.fillOpacity,
+        fillFrom,
+        fillTo,
+        opacityFrom: pa.fillOpacity,
+        opacityTo: pb.fillOpacity,
+        fillAnimates: JSON.stringify(fillFrom) !== JSON.stringify(fillTo),
       });
     }
   }
   return { viewBox, paths };
+}
+
+const lerpNum = (a: number, b: number, t: number) => a + (b - a) * t;
+
+function hexColor(c: [number, number, number]): string {
+  return (
+    "#" +
+    c
+      .map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+function lerpColor(
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number
+): string {
+  return hexColor([
+    lerpNum(a[0], b[0], t),
+    lerpNum(a[1], b[1], t),
+    lerpNum(a[2], b[2], t),
+  ]);
+}
+
+export function morphFill(path: MorphPath, t: number): FillState {
+  const a = path.fillFrom;
+  const b = path.fillTo;
+  if (a.type === "raw") return { kind: "value", fill: a.value };
+  if (a.type === "solid" && b.type === "solid") {
+    return { kind: "value", fill: lerpColor(a.color, b.color, t) };
+  }
+  if (a.type === "gradient" && b.type === "gradient") {
+    const g = a.grad;
+    const h = b.grad;
+    const dRot = ((((h.rot - g.rot + 180) % 360) + 360) % 360) - 180;
+    return {
+      kind: "gradient",
+      cx: lerpNum(g.cx, h.cx, t),
+      cy: lerpNum(g.cy, h.cy, t),
+      r: lerpNum(g.r, h.r, t),
+      transform: `translate(${lerpNum(g.tx, h.tx, t).toFixed(2)} ${lerpNum(g.ty, h.ty, t).toFixed(2)}) rotate(${(g.rot + dRot * t).toFixed(2)}) scale(${lerpNum(g.sx, h.sx, t).toFixed(3)} ${lerpNum(g.sy, h.sy, t).toFixed(3)})`,
+      stops: g.stops.map((s, i) => ({
+        offset: lerpNum(s.offset, h.stops[i].offset, t),
+        color: lerpColor(s.color, h.stops[i].color, t),
+        opacity: lerpNum(s.opacity, h.stops[i].opacity, t),
+      })),
+    };
+  }
+  return { kind: "value", fill: a.type === "solid" ? hexColor(a.color) : "none" };
 }
 
 export function morphPathD(path: MorphPath, t: number): string {
