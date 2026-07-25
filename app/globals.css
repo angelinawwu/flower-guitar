@@ -24,3 +24,51 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.song-grid {
+  container-type: size;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size:
+    calc(100% / var(--cols) * 4) 100%,
+    100% calc(100% / var(--rows) * 7),
+    calc(100% / var(--cols)) calc(100% / var(--rows)),
+    calc(100% / var(--cols)) calc(100% / var(--rows));
+}
+
+.speed-slider {
+  appearance: none;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  outline-offset: 4px;
+  cursor: pointer;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #e4e4e7;
+}
+
+.speed-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 9999px;
+  background: #e4e4e7;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .speed-slider::-webkit-slider-thumb {
+    transition: background-color 200ms ease;
+  }
+  .speed-slider:hover::-webkit-slider-thumb {
+    background: #ffffff;
+  }
+}
