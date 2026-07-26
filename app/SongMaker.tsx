@@ -10,6 +10,7 @@ import {
 import { buildMorphPlan, type MorphPlan } from "../lib/flower-morph";
 import { playFlowerNote, type FlowerKind } from "../lib/sounds";
 import BloomFlower, { type BloomFlowerHandle } from "./BloomFlower";
+import ShaderOverlay, { addGlowBloom, updateGlowPointer } from "./ShaderOverlay";
 
 import { Play, Pause, ArrowCounterClockwise } from "@phosphor-icons/react";
 
@@ -40,6 +41,8 @@ interface SongMakerProps {
 }
 
 const FLOWERS: FlowerKind[] = ["A", "B", "C"];
+
+const FLOWER_INDEX: Record<FlowerKind, number> = { A: 0, B: 1, C: 2 };
 
 export default function SongMaker({ svgs }: SongMakerProps) {
   const plans = useMemo<Record<FlowerKind, MorphPlan>>(
@@ -74,10 +77,17 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const paletteRefs = useRef<Map<FlowerKind, BloomFlowerHandle>>(new Map());
 
   const triggerColumn = useCallback((col: number) => {
+    const rect = gridRef.current?.getBoundingClientRect();
     for (const [key, note] of notesRef.current) {
       if (note.col !== col) continue;
       playFlowerNote(note.flower, ROW_SEMITONES[note.row], speedRef.current);
       bloomRefs.current.get(key)?.bloom();
+      
+      if (rect) {
+        const x = rect.left + (note.col + 0.5) / COLS * rect.width;
+        const y = rect.top + (note.row + 0.5) / ROWS * rect.height;
+        addGlowBloom(x / window.innerWidth, y / window.innerHeight, FLOWER_INDEX[note.flower]);
+      }
     }
   }, []);
 
@@ -138,11 +148,20 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         return next;
       });
       playFlowerNote(selected, ROW_SEMITONES[cell.row], speed);
-      requestAnimationFrame(() => bloomRefs.current.get(key)?.bloom());
+      requestAnimationFrame(() => {
+        bloomRefs.current.get(key)?.bloom();
+        const rect = gridRef.current?.getBoundingClientRect();
+        if (rect) {
+          const x = rect.left + (cell.col + 0.5) / COLS * rect.width;
+          const y = rect.top + (cell.row + 0.5) / ROWS * rect.height;
+          addGlowBloom(x / window.innerWidth, y / window.innerHeight, FLOWER_INDEX[selected]);
+        }
+      });
     }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    updateGlowPointer(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
     if (drag) {
       const moved =
         drag.moved ||
@@ -201,7 +220,11 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const gridRect = gridRef.current?.getBoundingClientRect();
 
   return (
-    <div className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none">
+    <div 
+      className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none"
+      onPointerLeave={() => updateGlowPointer(-1, -1)}
+    >
+      <ShaderOverlay />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2.5">
         <button
