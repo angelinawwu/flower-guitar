@@ -74,7 +74,7 @@ body {
 }
 
 .flower-hover-scale {
-  filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
   transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), filter 200ms cubic-bezier(0.23, 1, 0.32, 1);
   transform-origin: center;
   will-change: transform, filter;
@@ -122,7 +122,7 @@ body {
   .group:hover .flower-hover-scale,
   .flower-hover-scale[data-hovered="true"] {
     transform: scale(1.06);
-    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.35));
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.45));
   }
 
   .flower-hover-scale:hover .flower-glow-layer,

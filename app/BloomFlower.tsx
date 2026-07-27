@@ -61,12 +61,15 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
     const applyT = (t: number) => {
       lastT.current = t;
 
+      const baseGlow = isHoveredRef.current ? 0.65 : 0.28;
+      const glowOpacity = baseGlow + (1 - baseGlow) * t;
+
       if (svg1Ref.current) {
         svg1Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
       }
       if (svg2Ref.current) {
         svg2Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
-        svg2Ref.current.style.opacity = String(t);
+        svg2Ref.current.style.opacity = glowOpacity.toFixed(3);
       }
 
       for (let i = 0; i < plan.paths.length; i++) {
@@ -213,7 +216,7 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
           ref={svg2Ref}
           viewBox={plan.viewBox}
           className="absolute top-0 left-0 w-full h-full mix-blend-lighten pointer-events-none"
-          style={{ transformOrigin: "center", overflow: "visible", filter: "blur(8px)", opacity: 0, willChange: "transform, opacity" }}
+          style={{ transformOrigin: "center", overflow: "visible", filter: "blur(8px)", opacity: 0.28, transition: "opacity 200ms ease", willChange: "transform, opacity" }}
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >
