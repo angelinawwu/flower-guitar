@@ -27,7 +27,7 @@ body {
 
 .song-grid {
   container-type: size;
-  background-color: #00321D;
+  background-color: #1E1E1E;
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 1px, transparent 1px),

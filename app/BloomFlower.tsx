@@ -30,11 +30,7 @@ interface BloomFlowerProps {
   isHovered?: boolean;
 }
 
-const GLOW_COLORS = {
-  A: "#D77EFE", // Indigo/Purple
-  B: "#FED672", // Orange
-  C: "#FC9DF2", // Pink
-};
+
 
 const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
   function BloomFlower(
@@ -43,10 +39,16 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
   ) {
     const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
     const initialFills = useMemo(() => plan.paths.map((p) => morphFill(p, 0)), [plan]);
-    const pathRefs = useRef<(SVGPathElement | null)[]>([]);
-    const gradRefs = useRef<(SVGRadialGradientElement | null)[]>([]);
-    const stopRefs = useRef<(SVGStopElement | null)[][]>([]);
-    const svgRef = useRef<SVGSVGElement>(null);
+    const pathRefs1 = useRef<(SVGPathElement | null)[]>([]);
+    const gradRefs1 = useRef<(SVGRadialGradientElement | null)[]>([]);
+    const stopRefs1 = useRef<(SVGStopElement | null)[][]>([]);
+
+    const pathRefs2 = useRef<(SVGPathElement | null)[]>([]);
+    const gradRefs2 = useRef<(SVGRadialGradientElement | null)[]>([]);
+    const stopRefs2 = useRef<(SVGStopElement | null)[][]>([]);
+
+    const svg1Ref = useRef<SVGSVGElement>(null);
+    const svg2Ref = useRef<SVGSVGElement>(null);
     const rafRef = useRef(0);
     const lastT = useRef(0);
 
@@ -58,51 +60,60 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
 
     const applyT = (t: number) => {
       lastT.current = t;
-      if (svgRef.current) {
-        svgRef.current.style.transform = `scale(${1 + 0.1 * t})`;
-        
-        // Form-fitting drop shadow based on morph state and hover
-        const hovered = isHoveredRef.current;
-        const blurRadius = (hovered ? 6 : 0) + (t * 8);
-        if (blurRadius > 0 && flowerKind) {
-          const color = GLOW_COLORS[flowerKind];
-          // Stack shadows for a tight, vibrant core and a softer outer glow
-          svgRef.current.style.filter = `drop-shadow(0 0 ${blurRadius}px ${color}) drop-shadow(0 0 ${blurRadius * 0.5}px ${color})`;
+      const hovered = isHoveredRef.current;
+      const blurRadius = (hovered ? 6 : 0) + (t * 8);
+
+      if (svg1Ref.current) {
+        svg1Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
+      }
+      if (svg2Ref.current) {
+        svg2Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
+        if (blurRadius > 0) {
+          svg2Ref.current.style.filter = `blur(${blurRadius}px)`;
         } else {
-          svgRef.current.style.filter = "none";
+          svg2Ref.current.style.filter = "none";
         }
       }
+
       for (let i = 0; i < plan.paths.length; i++) {
         const p = plan.paths[i];
-        const el = pathRefs.current[i];
-        if (!el) continue;
-        el.setAttribute("d", morphPathD(p, t));
-        if (p.opacityFrom !== p.opacityTo) {
-          el.setAttribute(
-            "fill-opacity",
-            (p.opacityFrom + (p.opacityTo - p.opacityFrom) * t).toFixed(3)
-          );
-        }
-        if (!p.fillAnimates) continue;
-        const fs = morphFill(p, t);
-        if (fs.kind === "value") {
-          el.setAttribute("fill", fs.fill);
-        } else {
-          const grad = gradRefs.current[i];
-          if (grad) {
-            grad.setAttribute("gradientTransform", fs.transform);
-            grad.setAttribute("cx", String(fs.cx));
-            grad.setAttribute("cy", String(fs.cy));
-            grad.setAttribute("r", String(fs.r));
+        
+        const updateEl = (
+          el: SVGPathElement | null,
+          grad: SVGRadialGradientElement | null,
+          stops: (SVGStopElement | null)[]
+        ) => {
+          if (!el) return;
+          el.setAttribute("d", morphPathD(p, t));
+          if (p.opacityFrom !== p.opacityTo) {
+            el.setAttribute(
+              "fill-opacity",
+              (p.opacityFrom + (p.opacityTo - p.opacityFrom) * t).toFixed(3)
+            );
           }
-          for (let j = 0; j < fs.stops.length; j++) {
-            const st = stopRefs.current[i]?.[j];
-            if (!st) continue;
-            st.setAttribute("offset", fs.stops[j].offset.toFixed(4));
-            st.setAttribute("stop-color", fs.stops[j].color);
-            st.setAttribute("stop-opacity", fs.stops[j].opacity.toFixed(3));
+          if (!p.fillAnimates) return;
+          const fs = morphFill(p, t);
+          if (fs.kind === "value") {
+            el.setAttribute("fill", fs.fill);
+          } else {
+            if (grad) {
+              grad.setAttribute("gradientTransform", fs.transform);
+              grad.setAttribute("cx", String(fs.cx));
+              grad.setAttribute("cy", String(fs.cy));
+              grad.setAttribute("r", String(fs.r));
+            }
+            for (let j = 0; j < fs.stops.length; j++) {
+              const st = stops[j];
+              if (!st) continue;
+              st.setAttribute("offset", fs.stops[j].offset.toFixed(4));
+              st.setAttribute("stop-color", fs.stops[j].color);
+              st.setAttribute("stop-opacity", fs.stops[j].opacity.toFixed(3));
+            }
           }
-        }
+        };
+
+        updateEl(pathRefs1.current[i], gradRefs1.current[i], stopRefs1.current[i] || []);
+        updateEl(pathRefs2.current[i], gradRefs2.current[i], stopRefs2.current[i] || []);
       }
     };
 
@@ -143,61 +154,119 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
     useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
     return (
-      <svg
-        ref={svgRef}
-        viewBox={plan.viewBox}
-        className={className}
-        style={{ transformOrigin: "center" }}
-        xmlns="http://www.w3.org/2000/svg"
-        role="img"
-        aria-label="Flower"
-      >
-        <defs>
-          {initialFills.map((f, i) =>
-            f.kind === "gradient" ? (
-              <radialGradient
-                key={i}
-                id={`${uid}-g${i}`}
-                cx={f.cx}
-                cy={f.cy}
-                r={f.r}
-                gradientUnits="userSpaceOnUse"
-                gradientTransform={f.transform}
-                ref={(el) => {
-                  gradRefs.current[i] = el;
-                }}
-              >
-                {f.stops.map((s, j) => (
-                  <stop
-                    key={j}
-                    offset={s.offset}
-                    stopColor={s.color}
-                    stopOpacity={s.opacity}
-                    ref={(el) => {
-                      (stopRefs.current[i] ??= [])[j] = el;
-                    }}
-                  />
-                ))}
-              </radialGradient>
-            ) : null
-          )}
-        </defs>
-        {plan.paths.map((p, i) => (
-          <path
-            key={i}
-            ref={(el) => {
-              pathRefs.current[i] = el;
-            }}
-            d={morphPathD(p, 0)}
-            fill={
-              initialFills[i].kind === "gradient"
-                ? `url(#${uid}-g${i})`
-                : (initialFills[i] as { fill: string }).fill
-            }
-            fillOpacity={p.opacityFrom}
-          />
-        ))}
-      </svg>
+      <div className={`relative ${className || ""}`}>
+        <svg
+          ref={svg1Ref}
+          viewBox={plan.viewBox}
+          className="block w-full h-full"
+          style={{ transformOrigin: "center", overflow: "visible" }}
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Flower"
+        >
+          <defs>
+            {initialFills.map((f, i) =>
+              f.kind === "gradient" ? (
+                <radialGradient
+                  key={i}
+                  id={`${uid}-g1-${i}`}
+                  cx={f.cx}
+                  cy={f.cy}
+                  r={f.r}
+                  gradientUnits="userSpaceOnUse"
+                  gradientTransform={f.transform}
+                  ref={(el) => {
+                    gradRefs1.current[i] = el;
+                  }}
+                >
+                  {f.stops.map((s, j) => (
+                    <stop
+                      key={j}
+                      offset={s.offset}
+                      stopColor={s.color}
+                      stopOpacity={s.opacity}
+                      ref={(el) => {
+                        (stopRefs1.current[i] ??= [])[j] = el;
+                      }}
+                    />
+                  ))}
+                </radialGradient>
+              ) : null
+            )}
+          </defs>
+          {plan.paths.map((p, i) => (
+            <path
+              key={i}
+              ref={(el) => {
+                pathRefs1.current[i] = el;
+              }}
+              d={morphPathD(p, 0)}
+              fill={
+                initialFills[i].kind === "gradient"
+                  ? `url(#${uid}-g1-${i})`
+                  : (initialFills[i] as { fill: string }).fill
+              }
+              fillOpacity={p.opacityFrom}
+            />
+          ))}
+        </svg>
+
+        {/* The glowing layer on top */}
+        <svg
+          ref={svg2Ref}
+          viewBox={plan.viewBox}
+          className="absolute top-0 left-0 w-full h-full mix-blend-lighten pointer-events-none"
+          style={{ transformOrigin: "center", overflow: "visible" }}
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <defs>
+            {initialFills.map((f, i) =>
+              f.kind === "gradient" ? (
+                <radialGradient
+                  key={i}
+                  id={`${uid}-g2-${i}`}
+                  cx={f.cx}
+                  cy={f.cy}
+                  r={f.r}
+                  gradientUnits="userSpaceOnUse"
+                  gradientTransform={f.transform}
+                  ref={(el) => {
+                    gradRefs2.current[i] = el;
+                  }}
+                >
+                  {f.stops.map((s, j) => (
+                    <stop
+                      key={j}
+                      offset={s.offset}
+                      stopColor={s.color}
+                      stopOpacity={s.opacity}
+                      ref={(el) => {
+                        (stopRefs2.current[i] ??= [])[j] = el;
+                      }}
+                    />
+                  ))}
+                </radialGradient>
+              ) : null
+            )}
+          </defs>
+          {plan.paths.map((p, i) => (
+            <path
+              key={i}
+              ref={(el) => {
+                pathRefs2.current[i] = el;
+              }}
+              d={morphPathD(p, 0)}
+              fill={
+                initialFills[i].kind === "gradient"
+                  ? `url(#${uid}-g2-${i})`
+                  : (initialFills[i] as { fill: string }).fill
+              }
+              fillOpacity={p.opacityFrom}
+            />
+          ))}
+        </svg>
+      </div>
     );
   }
 );

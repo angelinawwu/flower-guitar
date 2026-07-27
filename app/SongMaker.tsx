@@ -204,7 +204,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const gridRect = gridRef.current?.getBoundingClientRect();
 
   return (
-    <div className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none">
+    <div className="flex h-dvh flex-col bg-[#1E1E1E] text-zinc-300 select-none">
       <ShaderOverlay />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2.5">
@@ -318,11 +318,11 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               }}
             >
               <div className="absolute inset-0 scale-[3]">
-                <BloomFlower 
-                  plan={plans[selected]} 
-                  flowerKind={selected} 
+                <BloomFlower
+                  plan={plans[selected]}
+                  flowerKind={selected}
                   isHovered={true}
-                  className="h-full w-full p-[8%]" 
+                  className="h-full w-full p-[8%]"
                 />
               </div>
             </div>
