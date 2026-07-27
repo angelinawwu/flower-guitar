@@ -41,7 +41,7 @@ const FRAGMENT_SHADER = `
     vec3 color = vec3(0.5);
 
     // Apply grain (more prominent)
-    color += (grain - 0.5) * 0.28;
+    color += (grain - 0.5) * 0.2;
     
     // Apply halftone dots (more prominent)
     color += (dither - 0.5) * 0.1;
