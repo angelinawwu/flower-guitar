@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { motion } from "framer-motion";
 import { buildMorphPlan, type MorphPlan } from "../lib/flower-morph";
 import { playFlowerNote, type FlowerKind } from "../lib/sounds";
 import BloomFlower, { type BloomFlowerHandle } from "./BloomFlower";
@@ -461,20 +460,15 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         >
           {/* hover ghost */}
           {hoverCell && !dragNote && (
-            <motion.div
+            <div
               className="pointer-events-none absolute top-0 left-0"
-              initial={false}
-              animate={{
-                transform: `translateX(${hoverCell.col * 100}%) translateY(${hoverCell.row * 100}%)`,
-                opacity: notes.has(keyOf(hoverCell.col, hoverCell.row)) ? 0 : 0.3,
-              }}
-              transition={{
-                transform: { type: "spring", stiffness: 450, damping: 40, mass: 1 },
-                opacity: { duration: 0.15, ease: "easeOut" }
-              }}
               style={{
                 width: `${100 / COLS}%`,
                 height: `${100 / ROWS}%`,
+                transform: `translate(${hoverCell.col * 100}%, ${hoverCell.row * 100}%)`,
+                opacity: notes.has(keyOf(hoverCell.col, hoverCell.row)) ? 0 : 0.3,
+                transition: "transform 250ms cubic-bezier(.165, .84, .44, 1), opacity 150ms ease-out",
+                willChange: "transform, opacity",
               }}
             >
               <div className="absolute inset-0 scale-[3]">
@@ -485,7 +479,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                   className="h-full w-full p-[6%]"
                 />
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* drop target ghost while dragging */}
