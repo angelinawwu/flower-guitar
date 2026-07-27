@@ -10,7 +10,7 @@ import {
 import { buildMorphPlan, type MorphPlan } from "../lib/flower-morph";
 import { playFlowerNote, type FlowerKind } from "../lib/sounds";
 import BloomFlower, { type BloomFlowerHandle } from "./BloomFlower";
-import ShaderOverlay, { addGlowBloom, updateGlowPointer } from "./ShaderOverlay";
+import ShaderOverlay from "./ShaderOverlay";
 
 import { Play, Pause, ArrowCounterClockwise } from "@phosphor-icons/react";
 
@@ -77,17 +77,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const paletteRefs = useRef<Map<FlowerKind, BloomFlowerHandle>>(new Map());
 
   const triggerColumn = useCallback((col: number) => {
-    const rect = gridRef.current?.getBoundingClientRect();
     for (const [key, note] of notesRef.current) {
       if (note.col !== col) continue;
       playFlowerNote(note.flower, ROW_SEMITONES[note.row], speedRef.current);
       bloomRefs.current.get(key)?.bloom();
-      
-      if (rect) {
-        const x = rect.left + (note.col + 0.5) / COLS * rect.width;
-        const y = rect.top + (note.row + 0.5) / ROWS * rect.height;
-        addGlowBloom(x / window.innerWidth, y / window.innerHeight, FLOWER_INDEX[note.flower]);
-      }
     }
   }, []);
 
@@ -148,20 +141,11 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         return next;
       });
       playFlowerNote(selected, ROW_SEMITONES[cell.row], speed);
-      requestAnimationFrame(() => {
-        bloomRefs.current.get(key)?.bloom();
-        const rect = gridRef.current?.getBoundingClientRect();
-        if (rect) {
-          const x = rect.left + (cell.col + 0.5) / COLS * rect.width;
-          const y = rect.top + (cell.row + 0.5) / ROWS * rect.height;
-          addGlowBloom(x / window.innerWidth, y / window.innerHeight, FLOWER_INDEX[selected]);
-        }
-      });
+      requestAnimationFrame(() => bloomRefs.current.get(key)?.bloom());
     }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    updateGlowPointer(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
     if (drag) {
       const moved =
         drag.moved ||
@@ -220,10 +204,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const gridRect = gridRef.current?.getBoundingClientRect();
 
   return (
-    <div 
-      className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none"
-      onPointerLeave={() => updateGlowPointer(-1, -1)}
-    >
+    <div className="flex h-dvh flex-col bg-[#00321D] text-zinc-300 select-none">
       <ShaderOverlay />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2.5">
@@ -267,6 +248,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                   else paletteRefs.current.delete(f);
                 }}
                 plan={plans[f]}
+                flowerKind={f}
+                isHovered={selected === f}
                 className="h-8 w-8"
               />
             </button>
@@ -335,7 +318,12 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               }}
             >
               <div className="absolute inset-0 scale-[3]">
-                <BloomFlower plan={plans[selected]} className="h-full w-full p-[8%]" />
+                <BloomFlower 
+                  plan={plans[selected]} 
+                  flowerKind={selected} 
+                  isHovered={true}
+                  className="h-full w-full p-[8%]" 
+                />
               </div>
             </div>
           )}
@@ -386,6 +374,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                       else bloomRefs.current.delete(key);
                     }}
                     plan={plans[note.flower]}
+                    flowerKind={note.flower}
+                    isHovered={hoverCell?.col === note.col && hoverCell?.row === note.row}
                     className="h-full w-full p-[6%]"
                   />
                 </div>

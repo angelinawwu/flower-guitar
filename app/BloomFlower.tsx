@@ -26,11 +26,19 @@ interface BloomFlowerProps {
   holdDuration?: number;
   /** Time to morph back to state 1, in ms. */
   closeDuration?: number;
+  flowerKind?: "A" | "B" | "C";
+  isHovered?: boolean;
 }
+
+const GLOW_COLORS = {
+  A: "#D77EFE", // Indigo/Purple
+  B: "#FED672", // Orange
+  C: "#FC9DF2", // Pink
+};
 
 const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
   function BloomFlower(
-    { plan, className, openDuration = 260, holdDuration = 200, closeDuration = 420 },
+    { plan, className, openDuration = 260, holdDuration = 200, closeDuration = 420, flowerKind, isHovered = false },
     ref
   ) {
     const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -42,11 +50,27 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
     const rafRef = useRef(0);
     const lastT = useRef(0);
 
+    const isHoveredRef = useRef(isHovered);
+    useEffect(() => {
+      isHoveredRef.current = isHovered;
+      applyRef.current(lastT.current);
+    }, [isHovered]);
+
     const applyT = (t: number) => {
-      if (t === lastT.current) return;
       lastT.current = t;
       if (svgRef.current) {
         svgRef.current.style.transform = `scale(${1 + 0.1 * t})`;
+        
+        // Form-fitting drop shadow based on morph state and hover
+        const hovered = isHoveredRef.current;
+        const blurRadius = (hovered ? 6 : 0) + (t * 8);
+        if (blurRadius > 0 && flowerKind) {
+          const color = GLOW_COLORS[flowerKind];
+          // Stack shadows for a tight, vibrant core and a softer outer glow
+          svgRef.current.style.filter = `drop-shadow(0 0 ${blurRadius}px ${color}) drop-shadow(0 0 ${blurRadius * 0.5}px ${color})`;
+        } else {
+          svgRef.current.style.filter = "none";
+        }
       }
       for (let i = 0; i < plan.paths.length; i++) {
         const p = plan.paths[i];
