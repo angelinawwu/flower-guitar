@@ -16,6 +16,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "flower guitar",
   description: "write songs with neon flowers in my music garden",
+  openGraph: {
+    title: "flower guitar",
+    description: "write songs with neon flowers in my music garden",
+    images: [
+      {
+        url: "/OpenGraph.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "flower guitar",
+    description: "write songs with neon flowers in my music garden",
+    images: ["/OpenGraph.png"],
+  },
 };
 
 export default function RootLayout({
