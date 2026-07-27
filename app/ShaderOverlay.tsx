@@ -24,7 +24,7 @@ const FRAGMENT_SHADER = `
     vec2 st = gl_FragCoord.xy / u_resolution.xy;
     
     // 1. High frequency film grain (scaled up 2.5x for larger grain size)
-    vec2 grainCoord = floor(gl_FragCoord.xy / 2.5);
+    vec2 grainCoord = floor(gl_FragCoord.xy / 2);
     float grain = hash(grainCoord);
     
     // 2. Halftone / Dither pattern (scaled up)
@@ -34,7 +34,7 @@ const FRAGMENT_SHADER = `
     
     // 3. Haziness / Vignetting
     float dist = distance(st, vec2(0.5));
-    float vignette = smoothstep(0.4, 1.5, dist);
+    float vignette = smoothstep(0.5, 1.6, dist);
 
     // In 'overlay' blend mode, exactly 0.5 is invisible.
     // > 0.5 lightens the background, < 0.5 darkens it.
@@ -46,8 +46,8 @@ const FRAGMENT_SHADER = `
     // Apply halftone dots (more prominent)
     color += (dither - 0.5) * 0.1;
     
-    // Apply vignette (darken edges very slightly)
-    color -= vignette * 0.15;
+    // Apply vignette (darken edges slightly less)
+    color -= vignette * 0.08;
 
     gl_FragColor = vec4(color, 1.0);
   }

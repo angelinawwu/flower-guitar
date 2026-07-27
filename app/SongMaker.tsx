@@ -419,11 +419,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerLeave={cancelClearHold}
           onPointerCancel={cancelClearHold}
           aria-label="Hold to clear grid"
-          className={`btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-all ease-out ${
-            isClearedFlash
+          className={`btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-all ease-out ${isClearedFlash
               ? "bg-white text-black scale-105 duration-75"
               : "text-white/50 hover:bg-white/10 hover:text-white scale-100 duration-300"
-          }`}
+            }`}
         >
           <span className="relative z-10 transition-colors ease-out">Clear</span>
           <div
