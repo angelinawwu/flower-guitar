@@ -60,8 +60,7 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
 
     const applyT = (t: number) => {
       lastT.current = t;
-      const hovered = isHoveredRef.current;
-      const blurRadius = (hovered ? 6 : 0) + (t * 8);
+      const blurRadius = t * 8;
 
       if (svg1Ref.current) {
         svg1Ref.current.style.transform = `scale(${1 + 0.1 * t})`;

@@ -74,8 +74,9 @@ body {
 }
 
 .flower-hover-scale {
-  transition: transform 200ms cubic-bezier(.25, .46, .45, .94);
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), filter 200ms cubic-bezier(0.23, 1, 0.32, 1);
   transform-origin: center;
+  will-change: transform, filter;
 }
 
 .speed-slider:active::-moz-range-thumb {
@@ -113,7 +114,8 @@ body {
   .flower-hover-scale:hover,
   .group:hover .flower-hover-scale,
   .flower-hover-scale[data-hovered="true"] {
-    transform: scale(1.05);
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
   }
 
   .btn-tactile:active {

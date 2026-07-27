@@ -389,7 +389,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           aria-label="Hold to clear grid"
           className="btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white overflow-hidden select-none"
         >
-          <span className="relative z-10">Hold Clear</span>
+          <span className="relative z-10">Clear</span>
           <div
             className="absolute inset-0 bg-red-500/25 pointer-events-none"
             style={{
@@ -437,7 +437,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                   plan={plans[selected]}
                   flowerKind={selected}
                   isHovered={true}
-                  className="h-full w-full p-[8%]"
+                  className="h-full w-full p-[6%]"
                 />
               </div>
             </div>
