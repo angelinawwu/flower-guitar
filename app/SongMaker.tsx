@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { motion } from "framer-motion";
 import { buildMorphPlan, type MorphPlan } from "../lib/flower-morph";
 import { playFlowerNote, type FlowerKind } from "../lib/sounds";
 import BloomFlower, { type BloomFlowerHandle } from "./BloomFlower";
@@ -67,13 +68,25 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     moved: boolean;
   } | null>(null);
   const [isHoldingClear, setIsHoldingClear] = useState(false);
+  const [isClearedFlash, setIsClearedFlash] = useState(false);
   const clearTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const flashTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const startClearHold = () => {
+    if (flashTimerRef.current) {
+      clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = null;
+    }
+    setIsClearedFlash(false);
     setIsHoldingClear(true);
     clearTimerRef.current = setTimeout(() => {
       setNotes(new Map());
       setIsHoldingClear(false);
+      setIsClearedFlash(true);
+      flashTimerRef.current = setTimeout(() => {
+        setIsClearedFlash(false);
+        flashTimerRef.current = null;
+      }, 400);
     }, 750);
   };
 
@@ -325,7 +338,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const gridRect = gridRef.current?.getBoundingClientRect();
 
   return (
-    <div className="flex h-dvh flex-col bg-[#1E1E1E] text-zinc-300 select-none">
+    <div className="flex h-dvh flex-col bg-[#312B3B] text-zinc-300 select-none">
       <ShaderOverlay />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2.5">
@@ -407,16 +420,21 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerLeave={cancelClearHold}
           onPointerCancel={cancelClearHold}
           aria-label="Hold to clear grid"
-          className="btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white overflow-hidden select-none"
+          className={`btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-colors ease-out ${
+            isClearedFlash
+              ? "bg-white text-black duration-75"
+              : "text-white/50 hover:bg-white/10 hover:text-white duration-300"
+          }`}
         >
-          <span className="relative z-10">Clear</span>
+          <span className="relative z-10 transition-colors ease-out">Clear</span>
           <div
-            className="absolute inset-0 bg-red-500/25 pointer-events-none"
+            className="absolute inset-0 bg-red-500/25 pointer-events-none transition-opacity duration-200"
             style={{
               clipPath: isHoldingClear ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
               transition: isHoldingClear
                 ? "clip-path 750ms linear"
                 : "clip-path 200ms cubic-bezier(.25, .46, .45, .94)",
+              opacity: isClearedFlash ? 0 : 1,
             }}
           />
         </button>
@@ -442,12 +460,19 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           }
         >
           {/* hover ghost */}
-          {hoverCell && !dragNote && !notes.has(keyOf(hoverCell.col, hoverCell.row)) && (
-            <div
-              className="pointer-events-none absolute opacity-30"
+          {hoverCell && !dragNote && (
+            <motion.div
+              className="pointer-events-none absolute top-0 left-0"
+              initial={false}
+              animate={{
+                transform: `translateX(${hoverCell.col * 100}%) translateY(${hoverCell.row * 100}%)`,
+                opacity: notes.has(keyOf(hoverCell.col, hoverCell.row)) ? 0 : 0.3,
+              }}
+              transition={{
+                transform: { type: "spring", stiffness: 450, damping: 40, mass: 1 },
+                opacity: { duration: 0.15, ease: "easeOut" }
+              }}
               style={{
-                left: `${(hoverCell.col / COLS) * 100}%`,
-                top: `${(hoverCell.row / ROWS) * 100}%`,
                 width: `${100 / COLS}%`,
                 height: `${100 / ROWS}%`,
               }}
@@ -460,7 +485,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                   className="h-full w-full p-[6%]"
                 />
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* drop target ghost while dragging */}

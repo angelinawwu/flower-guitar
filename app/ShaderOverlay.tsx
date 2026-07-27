@@ -28,7 +28,8 @@ const FRAGMENT_SHADER = `
     float grain = hash(grainCoord);
     
     // 2. Halftone / Dither pattern (scaled up)
-    vec2 p = mod(gl_FragCoord.xy, 6.0);
+    float scale = 0.75;
+    vec2 p = mod(gl_FragCoord.xy / scale, 6.0);
     float dither = length(p - 3.0) < 2.0 ? 1.0 : 0.0;
     
     // 3. Haziness / Vignetting
@@ -76,13 +77,13 @@ export default function ShaderOverlay() {
 
     const vShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
     const fShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    
+
     const program = gl.createProgram();
     if (!program) return;
     gl.attachShader(program, vShader);
     gl.attachShader(program, fShader);
     gl.linkProgram(program);
-    
+
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       console.error(gl.getProgramInfoLog(program));
       return;
@@ -93,8 +94,8 @@ export default function ShaderOverlay() {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
       -1, -1,
-       3, -1,
-      -1,  3
+      3, -1,
+      -1, 3
     ]), gl.STATIC_DRAW);
 
     const positionLoc = gl.getAttribLocation(program, "position");
