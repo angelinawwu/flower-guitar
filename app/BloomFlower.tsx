@@ -154,7 +154,10 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
     useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
     return (
-      <div className={`relative ${className || ""}`}>
+      <div
+        className={`flower-hover-scale relative ${className || ""}`}
+        data-hovered={isHovered ? "true" : "false"}
+      >
         <svg
           ref={svg1Ref}
           viewBox={plan.viewBox}

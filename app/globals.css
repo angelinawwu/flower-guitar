@@ -55,6 +55,7 @@ body {
   height: 14px;
   border-radius: 0;
   background: #e4e4e7;
+  transform: scale(1);
 }
 
 .speed-slider::-moz-range-thumb {
@@ -63,14 +64,88 @@ body {
   border: none;
   border-radius: 0;
   background: #e4e4e7;
+  transform: scale(1);
+}
+
+/* Active state (when being used/dragged) */
+.speed-slider:active::-webkit-slider-thumb {
+  background: #ffffff;
+  transform: scale(1.35);
+}
+
+.flower-hover-scale {
+  transition: transform 200ms cubic-bezier(.25, .46, .45, .94);
+  transform-origin: center;
+}
+
+.speed-slider:active::-moz-range-thumb {
+  background: #ffffff;
+  transform: scale(1.35);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .speed-slider::-webkit-slider-thumb {
-    transition: background-color 200ms ease;
+    transition: transform 200ms cubic-bezier(.25, .46, .45, .94), background-color 200ms ease;
+  }
+
+  .speed-slider::-moz-range-thumb {
+    transition: transform 200ms cubic-bezier(.25, .46, .45, .94), background-color 200ms ease;
   }
 
   .speed-slider:hover::-webkit-slider-thumb {
     background: #ffffff;
+    transform: scale(1.15);
+  }
+
+  .speed-slider:hover::-moz-range-thumb {
+    background: #ffffff;
+    transform: scale(1.15);
+  }
+
+  .speed-slider:active::-webkit-slider-thumb {
+    transform: scale(1.35);
+  }
+
+  .speed-slider:active::-moz-range-thumb {
+    transform: scale(1.35);
+  }
+
+  .flower-hover-scale:hover,
+  .group:hover .flower-hover-scale,
+  .flower-hover-scale[data-hovered="true"] {
+    transform: scale(1.05);
+  }
+
+  .btn-tactile:active {
+    transform: scale(0.95);
+  }
+
+  .palette-btn:active {
+    transform: scale(0.94);
+  }
+}
+
+.btn-tactile {
+  transition: transform 150ms cubic-bezier(.25, .46, .45, .94), background-color 200ms ease, color 200ms ease;
+}
+
+.palette-btn {
+  transition: transform 160ms cubic-bezier(.25, .46, .45, .94), background-color 200ms ease, box-shadow 200ms ease, ring-color 200ms ease;
+}
+
+.orientation-warning {
+  transition: opacity 250ms ease-out, transform 250ms cubic-bezier(.215, .61, .355, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .speed-slider::-webkit-slider-thumb,
+  .speed-slider::-moz-range-thumb,
+  .flower-hover-scale,
+  .btn-tactile,
+  .palette-btn,
+  .orientation-warning {
+    transform: none !important;
+    transition: opacity 200ms ease, background-color 200ms ease !important;
   }
 }

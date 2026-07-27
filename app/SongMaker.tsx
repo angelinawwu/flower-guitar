@@ -59,12 +59,31 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(5); // columns per second
   const [hoverCell, setHoverCell] = useState<{ col: number; row: number } | null>(null);
+  const [isPainting, setIsPainting] = useState(false);
   const [drag, setDrag] = useState<{
     key: string;
     x: number;
     y: number;
     moved: boolean;
   } | null>(null);
+  const [isHoldingClear, setIsHoldingClear] = useState(false);
+  const clearTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startClearHold = () => {
+    setIsHoldingClear(true);
+    clearTimerRef.current = setTimeout(() => {
+      setNotes(new Map());
+      setIsHoldingClear(false);
+    }, 750);
+  };
+
+  const cancelClearHold = () => {
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
+    }
+    setIsHoldingClear(false);
+  };
 
   const gridRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -75,6 +94,9 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   speedRef.current = speed;
   const positionRef = useRef(0); // playhead position in columns (float)
   const paletteRefs = useRef<Map<FlowerKind, BloomFlowerHandle>>(new Map());
+  const lastPaintedCellRef = useRef<{ col: number; row: number } | null>(null);
+  const isPaintingRef = useRef(isPainting);
+  isPaintingRef.current = isPainting;
 
   const triggerColumn = useCallback((col: number) => {
     for (const [key, note] of notesRef.current) {
@@ -125,13 +147,46 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     return { col, row };
   }, []);
 
+  const getCellsOnLine = useCallback(
+    (p0: { col: number; row: number }, p1: { col: number; row: number }) => {
+      const cells: Array<{ col: number; row: number }> = [];
+      const dx = Math.abs(p1.col - p0.col);
+      const dy = Math.abs(p1.row - p0.row);
+      const sx = p0.col < p1.col ? 1 : -1;
+      const sy = p0.row < p1.row ? 1 : -1;
+      let err = dx - dy;
+
+      let currCol = p0.col;
+      let currRow = p0.row;
+
+      while (true) {
+        if (currCol >= 0 && currCol < COLS && currRow >= 0 && currRow < ROWS) {
+          cells.push({ col: currCol, row: currRow });
+        }
+        if (currCol === p1.col && currRow === p1.row) break;
+        const e2 = 2 * err;
+        if (e2 > -dy) {
+          err -= dy;
+          currCol += sx;
+        }
+        if (e2 < dx) {
+          err += dx;
+          currRow += sy;
+        }
+      }
+      return cells;
+    },
+    []
+  );
+
   const onPointerDown = (e: React.PointerEvent) => {
     const cell = cellFromEvent(e);
     if (!cell) return;
     const key = keyOf(cell.col, cell.row);
+    gridRef.current?.setPointerCapture(e.pointerId);
+
     if (notes.has(key)) {
       // potential drag (or click-to-remove on pointerup)
-      gridRef.current?.setPointerCapture(e.pointerId);
       setDrag({ key, x: e.clientX, y: e.clientY, moved: false });
     } else {
       const note: Note = { col: cell.col, row: cell.row, flower: selected };
@@ -142,6 +197,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       });
       playFlowerNote(selected, ROW_SEMITONES[cell.row], speed);
       requestAnimationFrame(() => bloomRefs.current.get(key)?.bloom());
+      setIsPainting(true);
+      lastPaintedCellRef.current = cell;
     }
   };
 
@@ -152,12 +209,56 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5;
       setDrag({ ...drag, x: e.clientX, y: e.clientY, moved });
       setHoverCell(moved ? cellFromEvent(e) : null);
+    } else if (isPaintingRef.current && lastPaintedCellRef.current) {
+      const currentCell = cellFromEvent(e);
+      if (!currentCell) return;
+      setHoverCell(currentCell);
+
+      const path = getCellsOnLine(lastPaintedCellRef.current, currentCell);
+      lastPaintedCellRef.current = currentCell;
+
+      const newNotesToBloom: Array<{ key: string; row: number; flower: FlowerKind }> = [];
+
+      setNotes((prev) => {
+        let changed = false;
+        const next = new Map(prev);
+
+        for (const c of path) {
+          const k = keyOf(c.col, c.row);
+          const existingNote = next.get(k);
+          if (!existingNote || existingNote.flower !== selected) {
+            next.set(k, { col: c.col, row: c.row, flower: selected });
+            newNotesToBloom.push({ key: k, row: c.row, flower: selected });
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+
+      if (newNotesToBloom.length > 0) {
+        for (const item of newNotesToBloom) {
+          playFlowerNote(item.flower, ROW_SEMITONES[item.row], speed);
+        }
+        requestAnimationFrame(() => {
+          for (const item of newNotesToBloom) {
+            bloomRefs.current.get(item.key)?.bloom();
+          }
+        });
+      }
     } else {
       setHoverCell(cellFromEvent(e));
     }
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
+    if (gridRef.current?.hasPointerCapture(e.pointerId)) {
+      gridRef.current.releasePointerCapture(e.pointerId);
+    }
+    if (isPainting) {
+      setIsPainting(false);
+      lastPaintedCellRef.current = null;
+    }
     if (!drag) return;
     const cell = cellFromEvent(e);
     setNotes((prev) => {
@@ -211,14 +312,14 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         <button
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className="flex h-11 w-11 items-center justify-center rounded-none text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
+          className="btn-tactile flex h-11 w-11 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
         >
           {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
         </button>
         <button
           onClick={restart}
           aria-label="Restart"
-          className="flex h-11 w-11 items-center justify-center rounded-none text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
+          className="btn-tactile flex h-11 w-11 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
         >
           <ArrowCounterClockwise weight="bold" />
         </button>
@@ -237,7 +338,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               }}
               aria-label={`Select flower ${f}`}
               aria-pressed={selected === f}
-              className={`flex h-11 w-11 items-center justify-center rounded-none transition-colors duration-200 ease ${selected === f
+              className={`palette-btn group flex h-11 w-11 items-center justify-center rounded-none ${selected === f
                 ? "bg-white/20 ring-1 ring-white/30 text-white"
                 : "text-zinc-400 hover:bg-white/10 hover:text-white"
                 }`}
@@ -281,10 +382,23 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         <div className="flex-1" />
 
         <button
-          onClick={() => setNotes(new Map())}
-          className="flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider text-white/50 transition-colors duration-200 ease hover:bg-white/10 hover:text-white"
+          onPointerDown={startClearHold}
+          onPointerUp={cancelClearHold}
+          onPointerLeave={cancelClearHold}
+          onPointerCancel={cancelClearHold}
+          aria-label="Hold to clear grid"
+          className="btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider text-white/50 hover:bg-white/10 hover:text-white overflow-hidden select-none"
         >
-          Clear
+          <span className="relative z-10">Hold Clear</span>
+          <div
+            className="absolute inset-0 bg-red-500/25 pointer-events-none"
+            style={{
+              clipPath: isHoldingClear ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
+              transition: isHoldingClear
+                ? "clip-path 750ms linear"
+                : "clip-path 200ms cubic-bezier(.25, .46, .45, .94)",
+            }}
+          />
         </button>
       </div>
 
@@ -295,7 +409,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerLeave={() => !drag && setHoverCell(null)}
+          onPointerCancel={onPointerUp}
+          onPointerLeave={() => !drag && !isPainting && setHoverCell(null)}
           className="song-grid relative h-full cursor-pointer touch-none"
           style={
             {
@@ -358,12 +473,16 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                       transform: "translate(-50%, -50%) scale(1.15)",
                       zIndex: 10,
                       filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))",
+                      transition: "none",
                     }
                     : {
                       left: `${(note.col / COLS) * 100}%`,
                       top: `${(note.row / ROWS) * 100}%`,
                       width: `${100 / COLS}%`,
                       height: `${100 / ROWS}%`,
+                      transform: "translate(0, 0) scale(1)",
+                      filter: "drop-shadow(0 0 0 rgba(0,0,0,0))",
+                      transition: "transform 180ms cubic-bezier(.215, .61, .355, 1), filter 180ms ease-out, left 180ms cubic-bezier(.215, .61, .355, 1), top 180ms cubic-bezier(.215, .61, .355, 1)",
                     }
                 }
               >
@@ -397,7 +516,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           </div>
         </div>
       </div>
-      <div className="portrait:flex hidden fixed inset-0 z-50 bg-[#1c1c1c] items-center justify-center p-8 text-center text-zinc-300">
+      <div className="orientation-warning portrait:flex hidden fixed inset-0 z-50 bg-[#1c1c1c] items-center justify-center p-8 text-center text-zinc-300">
         Please turn your phone to landscape mode for the best experience.
       </div>
     </div>

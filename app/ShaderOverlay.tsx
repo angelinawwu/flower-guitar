@@ -25,7 +25,7 @@ const FRAGMENT_SHADER = `
     
     // 1. High frequency film grain (scaled up 2.5x for larger grain size)
     vec2 grainCoord = floor(gl_FragCoord.xy / 2.5);
-    float grain = hash(grainCoord + u_time * 100.0);
+    float grain = hash(grainCoord);
     
     // 2. Halftone / Dither pattern (scaled up)
     vec2 p = mod(gl_FragCoord.xy, 6.0);
