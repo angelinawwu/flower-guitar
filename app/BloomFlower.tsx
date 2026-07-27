@@ -60,18 +60,13 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
 
     const applyT = (t: number) => {
       lastT.current = t;
-      const blurRadius = t * 8;
 
       if (svg1Ref.current) {
         svg1Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
       }
       if (svg2Ref.current) {
         svg2Ref.current.style.transform = `scale(${1 + 0.1 * t})`;
-        if (blurRadius > 0) {
-          svg2Ref.current.style.filter = `blur(${blurRadius}px)`;
-        } else {
-          svg2Ref.current.style.filter = "none";
-        }
+        svg2Ref.current.style.opacity = String(t);
       }
 
       for (let i = 0; i < plan.paths.length; i++) {
@@ -218,7 +213,7 @@ const BloomFlower = forwardRef<BloomFlowerHandle, BloomFlowerProps>(
           ref={svg2Ref}
           viewBox={plan.viewBox}
           className="absolute top-0 left-0 w-full h-full mix-blend-lighten pointer-events-none"
-          style={{ transformOrigin: "center", overflow: "visible" }}
+          style={{ transformOrigin: "center", overflow: "visible", filter: "blur(8px)", opacity: 0, willChange: "transform, opacity" }}
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >

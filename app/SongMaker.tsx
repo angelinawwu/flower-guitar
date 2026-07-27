@@ -285,7 +285,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     setDrag(null);
   };
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     setPlaying((p) => {
       if (p && playheadRef.current) {
         // keep playhead visible where it paused
@@ -293,7 +293,27 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       }
       return !p;
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === " ") {
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [togglePlay]);
 
   const restart = () => {
     positionRef.current = 0;

@@ -104,9 +104,7 @@ export default function ShaderOverlay() {
     const uTimeLoc = gl.getUniformLocation(program, "u_time");
     const uResolutionLoc = gl.getUniformLocation(program, "u_resolution");
 
-    let rafId = 0;
-    
-    const loop = (time: number) => {
+    const draw = () => {
       // Resize canvas to display size
       const dpr = window.devicePixelRatio || 1;
       const displayWidth = Math.floor(canvas.clientWidth * dpr);
@@ -119,7 +117,7 @@ export default function ShaderOverlay() {
       }
 
       gl.useProgram(program);
-      gl.uniform1f(uTimeLoc, time * 0.001);
+      gl.uniform1f(uTimeLoc, 0); // Static noise
       gl.uniform2f(uResolutionLoc, canvas.width, canvas.height);
 
       // Clear with transparent black
@@ -127,13 +125,17 @@ export default function ShaderOverlay() {
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      rafId = requestAnimationFrame(loop);
     };
-    
-    rafId = requestAnimationFrame(loop);
+
+    draw();
+
+    const resizeObserver = new ResizeObserver(() => {
+      draw();
+    });
+    resizeObserver.observe(canvas);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
       gl.deleteProgram(program);
       gl.deleteShader(vShader);
       gl.deleteShader(fShader);
