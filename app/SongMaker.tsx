@@ -14,17 +14,18 @@ import ShaderOverlay from "./ShaderOverlay";
 
 import { Play, Pause, ArrowCounterClockwise } from "@phosphor-icons/react";
 
-const COLS = 32;
-const ROWS = 14;
-
 /**
  * Row -> semitone transposition (major pentatonic). Row 0 is the top of the
- * grid: only slightly above each sound's default pitch. The bottom row is
- * substantially lower (about 2.25 octaves down).
+ * grid. Going down steps by 2, 2, 3, 2, 3 semitones.
  */
-const ROW_SEMITONES = [
-  4, 2, 0, -3, -5, -8, -10, -12, -15, -17, -20, -22, -24, -27,
-];
+function getRowSemitone(row: number): number {
+  const steps = [2, 2, 3, 2, 3];
+  let semitone = 4;
+  for (let i = 0; i < row; i++) {
+    semitone -= steps[i % steps.length];
+  }
+  return semitone;
+}
 
 interface Note {
   col: number;
@@ -41,8 +42,6 @@ interface SongMakerProps {
 }
 
 const FLOWERS: FlowerKind[] = ["A", "B", "C"];
-
-const FLOWER_INDEX: Record<FlowerKind, number> = { A: 0, B: 1, C: 2 };
 
 export default function SongMaker({ svgs }: SongMakerProps) {
   const plans = useMemo<Record<FlowerKind, MorphPlan>>(
@@ -70,6 +69,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const [isClearedFlash, setIsClearedFlash] = useState(false);
   const clearTimerRef = useRef<NodeJS.Timeout | null>(null);
   const flashTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Dynamic grid dimensions based on screen size
+  const [gridSize, setGridSize] = useState({ cols: 32, rows: 14 });
+  const { cols, rows } = gridSize;
 
   const startClearHold = () => {
     if (flashTimerRef.current) {
@@ -109,11 +112,38 @@ export default function SongMaker({ svgs }: SongMakerProps) {
   const lastPaintedCellRef = useRef<{ col: number; row: number } | null>(null);
   const isPaintingRef = useRef(isPainting);
   isPaintingRef.current = isPainting;
+  const colsRef = useRef(cols);
+  colsRef.current = cols;
+
+  // Measure container dimensions to fit grid squares perfectly without scrolling
+  useEffect(() => {
+    const updateGridDimensions = () => {
+      const el = gridRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w <= 0 || h <= 0) return;
+
+      const targetSize = w < 768 ? 44 : 48;
+      const newCols = Math.max(8, Math.round(w / targetSize));
+      const newRows = Math.max(4, Math.round(h / targetSize));
+
+      setGridSize((prev) => {
+        if (prev.cols === newCols && prev.rows === newRows) return prev;
+        return { cols: newCols, rows: newRows };
+      });
+    };
+
+    updateGridDimensions();
+    const ro = new ResizeObserver(updateGridDimensions);
+    if (gridRef.current) ro.observe(gridRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const triggerColumn = useCallback((col: number) => {
     for (const [key, note] of notesRef.current) {
       if (note.col !== col) continue;
-      playFlowerNote(note.flower, ROW_SEMITONES[note.row], speedRef.current);
+      playFlowerNote(note.flower, getRowSemitone(note.row), speedRef.current);
       bloomRefs.current.get(key)?.bloom();
     }
   }, []);
@@ -130,17 +160,18 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       let next = prev + dt * speedRef.current;
       const prevCol = Math.floor(prev);
       let nextCol = Math.floor(next);
+      const activeCols = colsRef.current;
       // fire every column boundary crossed (handles wrap + fast tempos)
       for (let c = prevCol + 1; c <= nextCol; c++) {
-        triggerColumn(c % COLS);
+        triggerColumn(c % activeCols);
       }
-      if (next >= COLS) {
-        next -= COLS;
+      if (next >= activeCols) {
+        next -= activeCols;
         nextCol = Math.floor(next);
       }
       positionRef.current = next;
       if (playheadRef.current) {
-        playheadRef.current.style.transform = `translateX(${(next / COLS) * 100}cqw)`;
+        playheadRef.current.style.transform = `translateX(${(next / activeCols) * 100}cqw)`;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -150,14 +181,17 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     return () => cancelAnimationFrame(raf);
   }, [playing, triggerColumn]);
 
-  const cellFromEvent = useCallback((e: { clientX: number; clientY: number }) => {
-    const rect = gridRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const col = Math.floor(((e.clientX - rect.left) / rect.width) * COLS);
-    const row = Math.floor(((e.clientY - rect.top) / rect.height) * ROWS);
-    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
-    return { col, row };
-  }, []);
+  const cellFromEvent = useCallback(
+    (e: { clientX: number; clientY: number }) => {
+      const rect = gridRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      const col = Math.floor(((e.clientX - rect.left) / rect.width) * cols);
+      const row = Math.floor(((e.clientY - rect.top) / rect.height) * rows);
+      if (col < 0 || col >= cols || row < 0 || row >= rows) return null;
+      return { col, row };
+    },
+    [cols, rows]
+  );
 
   const getCellsOnLine = useCallback(
     (p0: { col: number; row: number }, p1: { col: number; row: number }) => {
@@ -172,7 +206,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       let currRow = p0.row;
 
       while (true) {
-        if (currCol >= 0 && currCol < COLS && currRow >= 0 && currRow < ROWS) {
+        if (currCol >= 0 && currCol < cols && currRow >= 0 && currRow < rows) {
           cells.push({ col: currCol, row: currRow });
         }
         if (currCol === p1.col && currRow === p1.row) break;
@@ -188,7 +222,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       }
       return cells;
     },
-    []
+    [cols, rows]
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -207,7 +241,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
         next.set(key, note);
         return next;
       });
-      playFlowerNote(selected, ROW_SEMITONES[cell.row], speed);
+      playFlowerNote(selected, getRowSemitone(cell.row), speed);
       requestAnimationFrame(() => bloomRefs.current.get(key)?.bloom());
       setIsPainting(true);
       lastPaintedCellRef.current = cell;
@@ -250,7 +284,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
 
       if (newNotesToBloom.length > 0) {
         for (const item of newNotesToBloom) {
-          playFlowerNote(item.flower, ROW_SEMITONES[item.row], speed);
+          playFlowerNote(item.flower, getRowSemitone(item.row), speed);
         }
         requestAnimationFrame(() => {
           for (const item of newNotesToBloom) {
@@ -288,7 +322,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           next.delete(drag.key);
           next.set(targetKey, { ...note, col: cell.col, row: cell.row });
           if (targetKey !== drag.key) {
-            playFlowerNote(note.flower, ROW_SEMITONES[cell.row], speed);
+            playFlowerNote(note.flower, getRowSemitone(cell.row), speed);
           }
         }
       }
@@ -439,7 +473,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       </div>
 
       {/* Grid */}
-      <div className="relative flex-1 overflow-auto border-t border-white/10 touch-pan-x touch-pan-y">
+      <div className="relative flex-1 overflow-hidden border-t border-white/10">
         <div
           ref={gridRef}
           onPointerDown={onPointerDown}
@@ -447,13 +481,11 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           onPointerLeave={() => !drag && !isPainting && setHoverCell(null)}
-          className="song-grid relative h-full min-h-[560px] cursor-pointer touch-none"
+          className="song-grid relative w-full h-full cursor-pointer touch-none"
           style={
             {
-              "--cols": COLS,
-              "--rows": ROWS,
-              aspectRatio: `${COLS} / ${ROWS}`,
-              minWidth: "max-content",
+              "--cols": cols,
+              "--rows": rows,
             } as React.CSSProperties
           }
         >
@@ -462,8 +494,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             <div
               className="pointer-events-none absolute top-0 left-0"
               style={{
-                width: `${100 / COLS}%`,
-                height: `${100 / ROWS}%`,
+                width: `${100 / cols}%`,
+                height: `${100 / rows}%`,
                 transform: `translate(${hoverCell.col * 100}%, ${hoverCell.row * 100}%)`,
                 opacity: notes.has(keyOf(hoverCell.col, hoverCell.row)) ? 0 : 0.3,
                 transition: "transform 250ms cubic-bezier(.165, .84, .44, 1), opacity 150ms ease-out",
@@ -486,10 +518,10 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             <div
               className="pointer-events-none absolute rounded-none bg-white/5 ring-1 ring-white/15"
               style={{
-                left: `${(hoverCell.col / COLS) * 100}%`,
-                top: `${(hoverCell.row / ROWS) * 100}%`,
-                width: `${100 / COLS}%`,
-                height: `${100 / ROWS}%`,
+                left: `${(hoverCell.col / cols) * 100}%`,
+                top: `${(hoverCell.row / rows) * 100}%`,
+                width: `${100 / cols}%`,
+                height: `${100 / rows}%`,
               }}
             />
           )}
@@ -506,18 +538,18 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                     ? {
                       left: drag.x - gridRect.left,
                       top: drag.y - gridRect.top,
-                      width: `${100 / COLS}%`,
-                      height: `${100 / ROWS}%`,
+                      width: `${100 / cols}%`,
+                      height: `${100 / rows}%`,
                       transform: "translate(-50%, -50%) scale(1.15)",
                       zIndex: 10,
                       filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))",
                       transition: "none",
                     }
                     : {
-                      left: `${(note.col / COLS) * 100}%`,
-                      top: `${(note.row / ROWS) * 100}%`,
-                      width: `${100 / COLS}%`,
-                      height: `${100 / ROWS}%`,
+                      left: `${(note.col / cols) * 100}%`,
+                      top: `${(note.row / rows) * 100}%`,
+                      width: `${100 / cols}%`,
+                      height: `${100 / rows}%`,
                       transform: "translate(0, 0) scale(1)",
                       filter: "drop-shadow(0 0 0 rgba(0,0,0,0))",
                       transition: "transform 180ms cubic-bezier(.215, .61, .355, 1), filter 180ms ease-out, left 180ms cubic-bezier(.215, .61, .355, 1), top 180ms cubic-bezier(.215, .61, .355, 1)",
@@ -545,7 +577,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             ref={playheadRef}
             className="pointer-events-none absolute inset-y-0 left-0 z-20 will-change-transform"
             style={{
-              width: `${100 / COLS}%`,
+              width: `${100 / cols}%`,
               visibility: playing || positionRef.current > 0 ? "visible" : "hidden",
             }}
           >
@@ -560,3 +592,4 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     </div>
   );
 }
+
