@@ -147,7 +147,7 @@ export default function ShaderOverlay() {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-50 h-full w-full"
+      className="pointer-events-none fixed inset-0 z-[60] h-full w-full"
       style={{ mixBlendMode: "overlay", opacity: 0.8 }} // Overlay blend mode makes grain look very tactile
     />
   );

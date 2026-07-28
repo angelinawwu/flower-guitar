@@ -586,8 +586,22 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           </div>
         </div>
       </div>
-      <div className="orientation-warning portrait:flex hidden fixed inset-0 z-50 bg-[#312B3B] items-center justify-center p-8 text-center text-white/50">
-        Please turn your phone to landscape mode for the best experience.
+      <div className="orientation-warning portrait:flex hidden fixed inset-0 z-50 bg-[#312B3B] flex-col items-center justify-center p-8 text-center text-white/50 overflow-hidden">
+        <div className="relative z-10 max-w-xs text-balance">
+          Please turn your phone to landscape mode for the best experience.
+        </div>
+        {/* Base Flower Background */}
+        <img
+          src="/Flower-bg.png"
+          alt=""
+          className="absolute bottom-0 left-0 right-0 w-full max-h-[50vh] object-contain object-bottom pointer-events-none select-none"
+        />
+        {/* Glowing Lighten Layer */}
+        <img
+          src="/Flower-bg.png"
+          alt=""
+          className="absolute bottom-0 left-0 right-0 w-full max-h-[50vh] object-contain object-bottom pointer-events-none select-none mix-blend-lighten blur-[8px] opacity-65"
+        />
       </div>
     </div>
   );
