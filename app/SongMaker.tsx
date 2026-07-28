@@ -340,26 +340,26 @@ export default function SongMaker({ svgs }: SongMakerProps) {
     <div className="flex h-dvh flex-col bg-[#312B3B] text-zinc-300 select-none">
       <ShaderOverlay />
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2.5">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 overflow-x-auto no-scrollbar shrink-0">
         <button
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className="btn-tactile flex h-11 w-11 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
+          className="btn-tactile flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
         >
           {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
         </button>
         <button
           onClick={restart}
           aria-label="Restart"
-          className="btn-tactile flex h-11 w-11 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
+          className="btn-tactile flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-none text-white/50 hover:bg-white/10 hover:text-white"
         >
           <ArrowCounterClockwise weight="bold" />
         </button>
 
-        <div className="mx-2 h-6 w-px bg-white/10" />
+        <div className="mx-1 sm:mx-2 h-5 sm:h-6 w-px bg-white/10 shrink-0" />
 
         {/* Flower palette */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {FLOWERS.map((f) => (
             <button
               key={f}
@@ -370,7 +370,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
               }}
               aria-label={`Select flower ${f}`}
               aria-pressed={selected === f}
-              className={`palette-btn group flex h-11 w-11 items-center justify-center rounded-none ${selected === f
+              className={`palette-btn group flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-none ${selected === f
                 ? "bg-white/20 ring-1 ring-white/30 text-white"
                 : "text-zinc-400 hover:bg-white/10 hover:text-white"
                 }`}
@@ -383,17 +383,17 @@ export default function SongMaker({ svgs }: SongMakerProps) {
                 plan={plans[f]}
                 flowerKind={f}
                 isHovered={selected === f}
-                className="h-8 w-8"
+                className="h-6 w-6 sm:h-8 sm:w-8"
               />
             </button>
           ))}
         </div>
 
-        <div className="mx-2 h-6 w-px bg-white/10" />
+        <div className="mx-1 sm:mx-2 h-5 sm:h-6 w-px bg-white/10 shrink-0" />
 
         {/* Speed slider */}
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs font-medium uppercase tracking-wider text-white/50">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-white/50">
             Speed
           </span>
           <input
@@ -403,15 +403,15 @@ export default function SongMaker({ svgs }: SongMakerProps) {
             step={0.5}
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
-            className="speed-slider w-36"
+            className="speed-slider w-20 sm:w-36"
             aria-label="Song speed"
           />
-          <span className="w-8 text-xs tabular-nums text-white/50">
+          <span className="w-7 sm:w-8 text-[10px] sm:text-xs tabular-nums text-white/50">
             {speed.toFixed(1)}
           </span>
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-w-[8px]" />
 
         <button
           onPointerDown={startClearHold}
@@ -419,7 +419,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerLeave={cancelClearHold}
           onPointerCancel={cancelClearHold}
           aria-label="Hold to clear grid"
-          className={`btn-tactile relative flex h-11 items-center justify-center px-4 rounded-none text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-all ease-out ${isClearedFlash
+          className={`btn-tactile relative flex h-9 sm:h-11 shrink-0 items-center justify-center px-3 sm:px-4 rounded-none text-[10px] sm:text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-all ease-out ${isClearedFlash
               ? "bg-white text-black scale-105 duration-75"
               : "text-white/50 hover:bg-white/10 hover:text-white scale-100 duration-300"
             }`}
@@ -439,7 +439,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
       </div>
 
       {/* Grid */}
-      <div className="relative flex-1 overflow-x-auto overflow-y-hidden border-t border-white/10 touch-pan-x">
+      <div className="relative flex-1 overflow-auto border-t border-white/10 touch-pan-x touch-pan-y">
         <div
           ref={gridRef}
           onPointerDown={onPointerDown}
@@ -447,7 +447,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           onPointerLeave={() => !drag && !isPainting && setHoverCell(null)}
-          className="song-grid relative h-full cursor-pointer touch-none"
+          className="song-grid relative h-full min-h-[560px] cursor-pointer touch-none"
           style={
             {
               "--cols": COLS,
