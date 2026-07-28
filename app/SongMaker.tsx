@@ -420,8 +420,8 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           onPointerCancel={cancelClearHold}
           aria-label="Hold to clear grid"
           className={`btn-tactile relative flex h-9 sm:h-11 shrink-0 items-center justify-center px-3 sm:px-4 rounded-none text-[10px] sm:text-xs font-medium uppercase tracking-wider overflow-hidden select-none transition-all ease-out ${isClearedFlash
-              ? "bg-white text-black scale-105 duration-75"
-              : "text-white/50 hover:bg-white/10 hover:text-white scale-100 duration-300"
+            ? "bg-white text-black scale-105 duration-75"
+            : "text-white/50 hover:bg-white/10 hover:text-white scale-100 duration-300"
             }`}
         >
           <span className="relative z-10 transition-colors ease-out">Clear</span>
@@ -554,7 +554,7 @@ export default function SongMaker({ svgs }: SongMakerProps) {
           </div>
         </div>
       </div>
-      <div className="orientation-warning portrait:flex hidden fixed inset-0 z-50 bg-[#1c1c1c] items-center justify-center p-8 text-center text-zinc-300">
+      <div className="orientation-warning portrait:flex hidden fixed inset-0 z-50 bg-[#312B3B] items-center justify-center p-8 text-center text-white/50">
         Please turn your phone to landscape mode for the best experience.
       </div>
     </div>
